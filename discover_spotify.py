@@ -16,9 +16,11 @@ def main():
     scope = 'user-library-modify user-library-read playlist-modify-public playlist-modify-private playlist-read-private'  # TODO: Find what scopes are actually needed
 
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI))
-    print_playlist_categories(sp)
-    get_current_user_playlists(sp)
-    get_current_user_playlists(sp, offset=50)
+    # print_playlist_categories(sp)
+    # get_current_user_playlists(sp)
+    # get_current_user_playlists(sp, offset=50)
+    # pprint(sp.recommendation_genre_seeds())
+    get_recommendations(sp)
     
 
 def print_playlist_categories(sp_client):
@@ -32,6 +34,15 @@ def get_current_user_playlists(sp_client, limit=50, offset=0):
         playlist = item['name']
         print(f'{idx+offset+1}: {playlist}')
     return results['items']
+
+def get_recommendations(sp_client):
+    results = sp_client.recommendations(seed_artists=['6d24kC5fxHFOSEAmjQPPhc'], seed_genres=['metal'], seed_tracks=['56g7gV4V3YvAmo4zbwnh3j'])
+    for key in results:
+        print(key)
+    for result in results['tracks']:
+        print(result['name'])
+    # pprint(results['tracks'][0])
+
 
 if __name__ == '__main__':
     main()
