@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 REDIRECT_URI = 'http://localhost:8080'
+CACHE_PLAYLIST_NAME = 'Discover Spotify Cache'
 
 def main():
     # get client_id and client_secret (currently stored in untracked json file, will change later)
@@ -16,11 +17,8 @@ def main():
     scope = 'user-library-modify user-library-read playlist-modify-public playlist-modify-private playlist-read-private'  # TODO: Find what scopes are actually needed
 
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI))
-    # print_playlist_categories(sp)
-    # get_current_user_playlists(sp)
-    # get_current_user_playlists(sp, offset=50)
-    # pprint(sp.recommendation_genre_seeds())
-    get_recommendations(sp)
+    cache_playlist = create_playlist_cache(sp)
+    # update cache playlist with new songs from other playlists
     
 
 def print_playlist_categories(sp_client):
@@ -41,8 +39,24 @@ def get_recommendations(sp_client):
         print(key)
     for result in results['tracks']:
         print(result['name'])
-    # pprint(results['tracks'][0])
 
+# Creates a private cache playlist if it does not already exist
+# Returns playlist
+def create_playlist_cache(sp_client):
+    cache_playlist_id = None
+    num_playlists = 50
+    limit = 50
+    offset = 0
+    while num_playlists == limit and not cache_playlist_id:
+        results = sp_client.current_user_playlists(limit=limit, offset=offset)
+        for result in results['items']:
+            if result['name'] == CACHE_PLAYLIST_NAME:
+                return result
+        num_playlists = len(results['items'])
+        offset += num_playlists
+    user = sp_client.current_user()
+    if not cache_playlist_id:
+        return sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
 
 if __name__ == '__main__':
     main()
