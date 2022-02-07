@@ -4,8 +4,9 @@ from time import sleep
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-REDIRECT_URI = 'http://localhost:8080'
 CACHE_PLAYLIST_NAME = 'Discover Spotify Cache'
+REDIRECT_URI = 'http://localhost:8080'
+SCOPE = 'user-library-modify user-library-read playlist-modify-public playlist-modify-private playlist-read-private'  # TODO: Find what scopes are actually needed
 
 def main():
     # get client_id and client_secret (currently stored in untracked json file, will change later)
@@ -14,10 +15,9 @@ def main():
         CLIENT_ID = data['CLIENT_ID']
         CLIENT_SECRET = data['CLIENT_SECRET']
 
-    scope = 'user-library-modify user-library-read playlist-modify-public playlist-modify-private playlist-read-private'  # TODO: Find what scopes are actually needed
-
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI))
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=SCOPE, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI))
     cache_playlist = create_playlist_cache(sp)
+    # get_all_user_playlists(sp)
     # update cache playlist with new songs from other playlists
     
 
@@ -44,19 +44,41 @@ def get_recommendations(sp_client):
 # Returns playlist
 def create_playlist_cache(sp_client):
     cache_playlist_id = None
+    playlists = get_all_user_playlists(sp_client)
+    user = sp_client.current_user()
+    for playlist_id, playlist_name in playlists.items():
+        if playlist_name == CACHE_PLAYLIST_NAME:
+            return sp_client.user_playlist(user['id'], playlist_id)
+    if not cache_playlist_id:
+        return sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
+
+# Creates dictionary of playlist_id : playlist_name for all user's playlists
+def get_all_user_playlists(sp_client):
     num_playlists = 50
     limit = 50
     offset = 0
-    while num_playlists == limit and not cache_playlist_id:
+    user_playlists = {}
+    while num_playlists == limit:
         results = sp_client.current_user_playlists(limit=limit, offset=offset)
-        for result in results['items']:
-            if result['name'] == CACHE_PLAYLIST_NAME:
-                return result
+        user_playlists = {**user_playlists, **{result['id'] : result['name'] for result in results['items']}}
         num_playlists = len(results['items'])
         offset += num_playlists
-    user = sp_client.current_user()
-    if not cache_playlist_id:
-        return sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
+    return user_playlists
+
+# TODO
+def get_all_user_tracks(sp_client):
+    tracks = {}  # dictionary of uri : track name
+    num_playlists = 50
+    limit = 50
+    offset = 0
+    while num_playlists == limit:
+        results = sp.client.current_user_playlists(limit=limit, offset=offset)
+        for result in results['items']:
+            if result['uri'] not in tracks:
+                tracks[result['uri']] = result['name']
+        num_playlists = len(results['items'])
+        offset += num_playlists
+
 
 if __name__ == '__main__':
     main()
