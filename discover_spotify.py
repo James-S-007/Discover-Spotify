@@ -5,6 +5,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 CACHE_PLAYLIST_NAME = 'Discover Spotify Cache'
+REC_PLAYLIST_NAME = 'Discover Spotify'
 REDIRECT_URI = 'http://localhost:8080'
 SCOPE = 'user-library-modify user-library-read playlist-modify-public playlist-modify-private playlist-read-private'  # TODO: Find what scopes are actually needed
 
@@ -16,7 +17,7 @@ def main():
         CLIENT_SECRET = data['CLIENT_SECRET']
 
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=SCOPE, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, redirect_uri=REDIRECT_URI))
-    cache_playlist = create_playlist_cache(sp)
+    rec_playlist, cache_playlist = create_playlist_and_cache(sp)
     # get_all_user_playlists(sp)
     # update cache playlist with new songs from other playlists
     
@@ -41,16 +42,26 @@ def get_recommendations(sp_client):
         print(result['name'])
 
 # Creates a private cache playlist if it does not already exist
-# Returns playlist
-def create_playlist_cache(sp_client):
-    cache_playlist_id = None
+# Returns (rec_playlist, cache_playlist)
+def create_playlist_and_cache(sp_client):
+    cache_playlist = None
+    rec_playlist = None
     playlists = get_all_user_playlists(sp_client)
     user = sp_client.current_user()
     for playlist_id, playlist_name in playlists.items():
-        if playlist_name == CACHE_PLAYLIST_NAME:
-            return sp_client.user_playlist(user['id'], playlist_id)
-    if not cache_playlist_id:
-        return sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
+        if playlist_name == REC_PLAYLIST_NAME:
+            rec_playlist = sp_client.user_playlist(user['id'], playlist_id)
+        elif playlist_name == CACHE_PLAYLIST_NAME:
+            cache_playlist = sp_client.user_playlist(user['id'], playlist_id)
+            
+        if rec_playlist and cache_playlist:
+            break
+
+    if not rec_playlist:
+        rec_playlist = sp_client.user_playlist_create(user['id'], name=REC_PLAYLIST_NAME, public=True, collaborative=False, description='')
+    if not cache_playlist:
+        cache_playlist = sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
+    return rec_playlist, cache_playlist
 
 # Creates dictionary of playlist_id : playlist_name for all user's playlists
 def get_all_user_playlists(sp_client):
