@@ -20,7 +20,7 @@ def main():
     rec_playlist, cache_playlist = create_playlist_and_cache(sp)
     # get_all_user_playlists(sp)
     # update cache playlist with new songs from other playlists
-    
+
 
 def print_playlist_categories(sp_client):
     categories = sp_client.categories()
@@ -63,6 +63,7 @@ def create_playlist_and_cache(sp_client):
         cache_playlist = sp_client.user_playlist_create(user['id'], name=CACHE_PLAYLIST_NAME, public=False, collaborative=False, description='')  # TODO(James): Add err handling
     return rec_playlist, cache_playlist
 
+
 # Creates dictionary of playlist_id : playlist_name for all user's playlists
 def get_all_user_playlists(sp_client):
     num_playlists = 50
@@ -76,19 +77,16 @@ def get_all_user_playlists(sp_client):
         offset += num_playlists
     return user_playlists
 
-# TODO
+
+# TODO: Test
 def get_all_user_tracks(sp_client):
+    playlists = get_all_user_playlists(sp_client)
+    user = sp_client.current_user()
     tracks = {}  # dictionary of uri : track name
-    num_playlists = 50
-    limit = 50
-    offset = 0
-    while num_playlists == limit:
-        results = sp.client.current_user_playlists(limit=limit, offset=offset)
-        for result in results['items']:
-            if result['uri'] not in tracks:
-                tracks[result['uri']] = result['name']
-        num_playlists = len(results['items'])
-        offset += num_playlists
+    for playlist_id in playlists:
+        playlist = sp_client.user_playlist(user['id'], playlist_id)
+        tracks = {**tracks, **{track['id'] : track['name'] for track in playlist['tracks']}}
+    return tracks
 
 
 if __name__ == '__main__':
